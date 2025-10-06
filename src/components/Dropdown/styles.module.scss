@@ -116,4 +116,10 @@ button.chevron {
   padding-right: 10px;
   display: inline-block;
   width: 100%;
+  font-size: 0.85rem;
+
+  @media (min-width: $breakpoint-tablet) {
+    font-size: 1rem;
+    padding-right: 10px;
+  }
 }

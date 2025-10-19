@@ -1,0 +1,289 @@
+---
+title: Global Mode vs Instance Mode
+description: Understand the difference between global and instance mode in p5.js, and learn when to use each approach for embedding sketches in web pages.
+category: beyond-web-editor
+categoryIndex: 0
+authors:
+  - hxrshxz  
+  - Dave Pagurek
+---
+
+import Callout from "../../../components/Callout/index.astro";
+
+## Introduction
+
+When using p5.js outside of the Web Editor, you have two ways to structure your code: **global mode** and **instance mode**. Understanding the difference between these modes is essential when embedding p5.js sketches in websites, using multiple sketches on one page, or integrating p5.js with frameworks like React.
+
+## What is Global Mode?
+
+**Global mode** is the default way p5.js works in the Web Editor. In global mode, p5.js functions and variables are automatically available globally—you can use them anywhere in your code without any special setup.
+
+### Global Mode Example
+
+```javascript
+function setup() {
+  createCanvas(400, 400);
+  background(220);
+}
+
+function draw() {
+  circle(mouseX, mouseY, 50);
+}
+```
+
+In this code, `createCanvas()`, `background()`, `circle()`, `mouseX`, and `mouseY` are all global variables and functions provided by p5.js.
+
+### When to Use Global Mode
+
+Global mode is great when:
+- You're learning p5.js for the first time
+- You have only **one sketch** on a page
+- You're using an **iframe** to isolate the sketch (covered in the next tutorial)
+- You want simpler, more beginner-friendly code
+
+### Limitations of Global Mode
+
+- **Only one sketch per page**: You can't run two global mode sketches on the same page—they'll conflict with each other
+- **Namespace pollution**: Global mode adds many variables to the global scope, which can conflict with other JavaScript libraries
+- **Not ideal for frameworks**: Frameworks like React prefer modular, encapsulated code
+
+## What is Instance Mode?
+
+**Instance mode** creates a p5.js sketch as an object. All p5.js functions and variables become properties of that object, avoiding global namespace pollution.
+
+### Instance Mode Example
+
+```javascript
+const sketch = (p) => {
+  p.setup = function() {
+    p.createCanvas(400, 400);
+    p.background(220);
+  };
+
+  p.draw = function() {
+    p.circle(p.mouseX, p.mouseY, 50);
+  };
+};
+
+new p5(sketch);
+```
+
+Notice the differences:
+- We pass a function to `new p5()`
+- The function receives a `p` parameter (you can name it anything)
+- All p5.js functions are called as methods on `p` (like `p.createCanvas()`)
+- All p5.js variables are properties of `p` (like `p.mouseX`)
+
+### When to Use Instance Mode
+
+Instance mode is ideal when:
+- You want **multiple sketches** on the same page
+- You're integrating with **JavaScript frameworks** (React, Vue, Angular)
+- You're using **ES6 modules** and want to avoid global variables
+- You're building more complex, production-ready applications
+
+### Targeting a Specific Container
+
+You can specify where the canvas should appear by passing a container element as the second argument:
+
+```javascript
+const sketch = (p) => {
+  p.setup = function() {
+    p.createCanvas(400, 400);
+    p.background(220);
+  };
+
+  p.draw = function() {
+    p.circle(p.mouseX, p.mouseY, 50);
+  };
+};
+
+// Create sketch in element with id="sketch-container".
+new p5(sketch, 'sketch-container');
+```
+
+Your HTML would look like:
+
+```html
+<div id="sketch-container"></div>
+<script src="sketch.js"></script>
+```
+
+## Multiple Sketches with Instance Mode
+
+One of the main benefits of instance mode is running multiple independent sketches:
+
+```javascript
+// First sketch - red circles.
+const sketch1 = (p) => {
+  p.setup = function() {
+    p.createCanvas(400, 400);
+  };
+
+  p.draw = function() {
+    p.background(220);
+    p.fill(255, 0, 0);
+    p.circle(p.mouseX, p.mouseY, 50);
+  };
+};
+
+// Second sketch - blue rectangles.
+const sketch2 = (p) => {
+  p.setup = function() {
+    p.createCanvas(400, 400);
+  };
+
+  p.draw = function() {
+    p.background(220);
+    p.fill(0, 0, 255);
+    p.rect(p.mouseX - 25, p.mouseY - 25, 50, 50);
+  };
+};
+
+// Create both sketches.
+new p5(sketch1, 'sketch1-container');
+new p5(sketch2, 'sketch2-container');
+```
+
+HTML:
+
+```html
+<div id="sketch1-container"></div>
+<div id="sketch2-container"></div>
+```
+
+## Converting Between Modes
+
+### Global Mode to Instance Mode
+
+To convert from global mode to instance mode:
+
+1. Wrap your code in a function that takes a `p` parameter
+2. Prefix all p5.js functions with `p.`
+3. Change function declarations to assignments: `function setup()` → `p.setup = function()`
+4. Call `new p5()` with your sketch function
+
+**Before (Global):**
+
+```javascript
+let x = 0;
+
+function setup() {
+  createCanvas(400, 400);
+}
+
+function draw() {
+  background(220);
+  circle(x, 200, 50);
+  x = (x + 1) % width;
+}
+```
+
+**After (Instance):**
+
+```javascript
+const sketch = (p) => {
+  let x = 0;
+
+  p.setup = function() {
+    p.createCanvas(400, 400);
+  };
+
+  p.draw = function() {
+    p.background(220);
+    p.circle(x, 200, 50);
+    x = (x + 1) % p.width;
+  };
+};
+
+new p5(sketch);
+```
+
+<Callout type="info">
+Note that local variables like `x` don't need the `p.` prefix—only p5.js functions and system variables.
+</Callout>
+
+## Using Instance Mode with ES6 Modules
+
+When using ES6 modules, you'll import p5 at the top of your file:
+
+```javascript
+import p5 from 'p5';
+
+const sketch = (p) => {
+  p.setup = function() {
+    p.createCanvas(400, 400);
+  };
+
+  p.draw = function() {
+    p.background(220);
+    p.circle(p.mouseX, p.mouseY, 50);
+  };
+};
+
+new p5(sketch);
+```
+
+## Common Pitfalls
+
+### Forgetting the `p.` Prefix
+
+**Wrong:**
+
+```javascript
+const sketch = (p) => {
+  p.setup = function() {
+    createCanvas(400, 400); // ❌ Missing p.
+  };
+};
+```
+
+**Correct:**
+
+```javascript
+const sketch = (p) => {
+  p.setup = function() {
+    p.createCanvas(400, 400); // ✅ Prefixed with p.
+  };
+};
+```
+
+### Using Arrow Functions for Setup/Draw
+
+**Wrong:**
+
+```javascript
+const sketch = (p) => {
+  p.setup = () => {  // ❌ Arrow function
+    p.createCanvas(400, 400);
+  };
+};
+```
+
+**Correct:**
+
+```javascript
+const sketch = (p) => {
+  p.setup = function() {  // ✅ Regular function
+    p.createCanvas(400, 400);
+  };
+};
+```
+
+<Callout type="warning">
+Use regular functions for `setup()`, `draw()`, and event handlers. Arrow functions don't bind `this` correctly for p5.js internals.
+</Callout>
+
+## Summary
+
+- **Global mode**: Simple, beginner-friendly, but limited to one sketch per page
+- **Instance mode**: More flexible, allows multiple sketches, works better with modern JavaScript
+- Use **global mode** with iframes for isolated sketches
+- Use **instance mode** for multiple sketches, frameworks, or ES6 modules
+- When converting, remember to add `p.` prefix to all p5.js functions and variables
+
+## Next Steps
+
+- [Embedding p5.js with an iframe](/tutorials/embedding-p5-with-iframe/) - Use global mode sketches in isolated iframes
+- [Loading p5.js in a Container](/tutorials/loading-p5-in-container/) - Use instance mode to embed sketches directly
+- [Using p5.js with React](/tutorials/p5-with-react/) - Integrate instance mode with React components

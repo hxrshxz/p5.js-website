@@ -1,0 +1,670 @@
+---
+title: Using ESM Modules with p5.js
+description: Learn how to use modern JavaScript ES6 modules with p5.js, including import statements, module scope, and both global and instance mode patterns.
+category: beyond-web-editor
+categoryIndex: 4
+authors:
+  - hxrshxz  
+  - Dave Pagurek
+---
+
+import Callout from "../../../components/Callout/index.astro";
+
+## Introduction
+
+Modern JavaScript uses ES6 modules (ESM) to organize code into reusable files. This tutorial shows you how to use p5.js with module syntax, whether you're working with global mode or instance mode.
+
+## Prerequisites
+
+- Understanding of [Global vs Instance Mode](/tutorials/global-vs-instance-mode/)
+- Basic knowledge of JavaScript modules (`import`/`export`)
+- Familiarity with p5.js basics
+
+## What are ES6 Modules?
+
+ES6 modules let you split your code into separate files and import only what you need:
+
+```javascript
+// math.js
+export function add(a, b) {
+  return a + b;
+}
+
+// sketch.js
+import { add } from './math.js';
+console.log(add(2, 3)); // 5
+```
+
+Benefits:
+- Better code organization
+- Explicit dependencies
+- Improved performance (tree-shaking)
+- Native browser support (no bundler required for basic use)
+
+## Basic Setup with Modules
+
+### HTML Structure
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>p5.js with Modules</title>
+</head>
+<body>
+  <!-- Load p5.js as a module -->
+  <script type="module">
+    import 'https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js';
+    import './sketch.js';
+  </script>
+</body>
+</html>
+```
+
+<Callout type="warning">
+The `type="module"` attribute is **required** for module scripts. Without it, `import` statements will cause errors.
+</Callout>
+
+## Method 1: Global Mode with Modules
+
+When using global mode in a module, you need to explicitly attach p5 functions to the `window` object:
+
+### sketch.js
+
+```javascript
+// Import p5 (if using npm).
+// import p5 from 'p5';
+
+// In modules, these must be attached to window.
+window.setup = function() {
+  createCanvas(400, 400);
+  background(220);
+};
+
+window.draw = function() {
+  fill(255, 0, 0);
+  circle(mouseX, mouseY, 50);
+};
+```
+
+### Why `window.setup`?
+
+In regular scripts, declaring `function setup()` creates a global function. But in ES6 modules, **all code is scoped to the module** by default. To make functions globally accessible to p5.js, you must attach them to the `window` object.
+
+❌ **Wrong** - won't work in modules:
+
+```javascript
+function setup() {
+  createCanvas(400, 400);
+}
+```
+
+✅ **Correct** - works in modules:
+
+```javascript
+window.setup = function() {
+  createCanvas(400, 400);
+};
+```
+
+<Callout type="info">
+If you find yourself writing `window.setup`, `window.draw`, etc., consider using **instance mode** instead—it's more natural with modules!
+</Callout>
+
+## Method 2: Instance Mode (Recommended)
+
+Instance mode works seamlessly with modules and doesn't require `window`:
+
+### sketch.js
+
+```javascript
+// Import p5 (if using npm).
+// import p5 from 'p5';
+
+const sketch = (p) => {
+  p.setup = function() {
+    p.createCanvas(400, 400);
+    p.background(220);
+  };
+
+  p.draw = function() {
+    p.fill(255, 0, 0);
+    p.circle(p.mouseX, p.mouseY, 50);
+  };
+};
+
+// Create sketch instance.
+new p5(sketch);
+```
+
+This is the **preferred approach** for modules because:
+- No need for `window` prefix
+- Multiple sketches work naturally
+- Cleaner separation of concerns
+
+## Using NPM and Bundlers
+
+For projects using npm and bundlers (Vite, Webpack, etc.), install p5.js as a dependency:
+
+```bash
+npm install p5
+```
+
+### Instance Mode with NPM
+
+```javascript
+import p5 from 'p5';
+
+const sketch = (p) => {
+  p.setup = function() {
+    p.createCanvas(400, 400);
+  };
+
+  p.draw = function() {
+    p.background(220);
+    p.circle(p.mouseX, p.mouseY, 50);
+  };
+};
+
+new p5(sketch);
+```
+
+### Global Mode with NPM
+
+```javascript
+import 'p5';
+
+window.setup = function() {
+  createCanvas(400, 400);
+};
+
+window.draw = function() {
+  background(220);
+  circle(mouseX, mouseY, 50);
+};
+```
+
+## Organizing Code with Modules
+
+### Separating Sketch Logic
+
+Split your sketch into multiple files:
+
+**particle.js** - Define a particle class:
+
+```javascript
+export class Particle {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.vx = Math.random() * 2 - 1;
+    this.vy = Math.random() * 2 - 1;
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+  }
+
+  display(p) {
+    p.fill(255, 0, 0);
+    p.circle(this.x, this.y, 20);
+  }
+
+  checkEdges(p) {
+    if (this.x < 0 || this.x > p.width) this.vx *= -1;
+    if (this.y < 0 || this.y > p.height) this.vy *= -1;
+  }
+}
+```
+
+**sketch.js** - Use the particle:
+
+```javascript
+import p5 from 'p5';
+import { Particle } from './particle.js';
+
+const sketch = (p) => {
+  let particles = [];
+
+  p.setup = function() {
+    p.createCanvas(400, 400);
+    
+    // Create particles.
+    for (let i = 0; i < 10; i += 1) {
+      particles.push(
+        new Particle(p.random(p.width), p.random(p.height))
+      );
+    }
+  };
+
+  p.draw = function() {
+    p.background(220);
+    
+    // Update and display particles.
+    particles.forEach(particle => {
+      particle.update();
+      particle.checkEdges(p);
+      particle.display(p);
+    });
+  };
+};
+
+new p5(sketch);
+```
+
+### Sharing Utilities
+
+**utils.js** - Reusable helper functions:
+
+```javascript
+export function randomColor(p) {
+  return p.color(
+    p.random(255),
+    p.random(255),
+    p.random(255)
+  );
+}
+
+export function distance(x1, y1, x2, y2) {
+  return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+}
+
+export const CONFIG = {
+  PARTICLE_COUNT: 50,
+  MAX_SPEED: 3,
+  PARTICLE_SIZE: 10
+};
+```
+
+**sketch.js** - Import utilities:
+
+```javascript
+import p5 from 'p5';
+import { randomColor, CONFIG } from './utils.js';
+
+const sketch = (p) => {
+  let color;
+
+  p.setup = function() {
+    p.createCanvas(400, 400);
+    color = randomColor(p);
+  };
+
+  p.draw = function() {
+    p.background(220);
+    p.fill(color);
+    p.circle(p.mouseX, p.mouseY, CONFIG.PARTICLE_SIZE);
+  };
+};
+
+new p5(sketch);
+```
+
+## Multiple Sketches with Modules
+
+Create separate sketch files and import them:
+
+**sketch1.js**:
+
+```javascript
+import p5 from 'p5';
+
+const sketch1 = (p) => {
+  p.setup = function() {
+    p.createCanvas(400, 400);
+  };
+
+  p.draw = function() {
+    p.background(220);
+    p.fill(255, 0, 0);
+    p.circle(p.mouseX, p.mouseY, 50);
+  };
+};
+
+export default sketch1;
+```
+
+**sketch2.js**:
+
+```javascript
+import p5 from 'p5';
+
+const sketch2 = (p) => {
+  p.setup = function() {
+    p.createCanvas(400, 400);
+  };
+
+  p.draw = function() {
+    p.background(220);
+    p.fill(0, 0, 255);
+    p.rect(p.mouseX - 25, p.mouseY - 25, 50, 50);
+  };
+};
+
+export default sketch2;
+```
+
+**main.js** - Combine both:
+
+```javascript
+import p5 from 'p5';
+import sketch1 from './sketch1.js';
+import sketch2 from './sketch2.js';
+
+// Create both sketches with containers.
+new p5(sketch1, 'sketch1-container');
+new p5(sketch2, 'sketch2-container');
+```
+
+**index.html**:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Multiple Sketches</title>
+</head>
+<body>
+  <div id="sketch1-container"></div>
+  <div id="sketch2-container"></div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
+```
+
+## Using Vite (Recommended Build Tool)
+
+Vite provides instant hot module replacement and optimized builds:
+
+### Setup
+
+```bash
+npm create vite@latest my-p5-project
+cd my-p5-project
+npm install
+npm install p5
+npm run dev
+```
+
+### Project Structure
+
+```
+my-p5-project/
+├── index.html
+├── package.json
+├── main.js
+└── src/
+    ├── sketch.js
+    └── particle.js
+```
+
+### index.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>p5.js with Vite</title>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/main.js"></script>
+</body>
+</html>
+```
+
+### main.js
+
+```javascript
+import p5 from 'p5';
+import sketch from './src/sketch.js';
+import './style.css';
+
+new p5(sketch, document.getElementById('app'));
+```
+
+### src/sketch.js
+
+```javascript
+export default function sketch(p) {
+  p.setup = function() {
+    p.createCanvas(400, 400);
+  };
+
+  p.draw = function() {
+    p.background(220);
+    p.circle(p.mouseX, p.mouseY, 50);
+  };
+}
+```
+
+### Build for Production
+
+```bash
+npm run build
+```
+
+This creates an optimized `dist/` folder ready for deployment.
+
+## TypeScript Support
+
+Vite supports TypeScript out of the box:
+
+### sketch.ts
+
+```typescript
+import type p5 from 'p5';
+
+export default function sketch(p: p5) {
+  let x = 0;
+
+  p.setup = function() {
+    p.createCanvas(400, 400);
+  };
+
+  p.draw = function() {
+    p.background(220);
+    p.fill(255, 0, 0);
+    p.circle(x, p.height / 2, 50);
+    
+    x += 1;
+    if (x > p.width) x = 0;
+  };
+}
+```
+
+Install types:
+
+```bash
+npm install --save-dev @types/p5
+```
+
+## Common Issues
+
+### Module Not Found
+
+**Error**: `Failed to resolve module specifier "p5"`
+
+**Solution**: Use a bundler (Vite, Webpack) or CDN URL:
+
+```javascript
+// ❌ Won't work without bundler
+import p5 from 'p5';
+
+// ✅ Works with CDN (but limited browser support)
+import p5 from 'https://cdn.jsdelivr.net/npm/p5@1.9.0/+esm';
+
+// ✅ Best: Use Vite/Webpack + npm install p5
+```
+
+### CORS Errors with Local Files
+
+**Error**: `Access to script at 'file://...' from origin 'null' has been blocked by CORS`
+
+**Solution**: Use a local server:
+
+```bash
+# Python
+python -m http.server 8000
+
+# Node.js (install first: npm install -g http-server)
+http-server
+
+# Or use VS Code Live Server extension
+```
+
+Then visit `http://localhost:8000`
+
+### Global Functions Not Working
+
+**Error**: `createCanvas is not defined`
+
+**Solution**: Remember modules are scoped. Either:
+
+1. Use instance mode (recommended):
+
+```javascript
+const sketch = (p) => {
+  p.setup = function() {
+    p.createCanvas(400, 400); // ✅
+  };
+};
+new p5(sketch);
+```
+
+2. Or attach to window (global mode):
+
+```javascript
+import 'p5';
+
+window.setup = function() {
+  createCanvas(400, 400); // ✅
+};
+```
+
+## Complete Example: Particle System
+
+**index.html**:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Particle System</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #1a1a1a;
+    }
+  </style>
+</head>
+<body>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
+```
+
+**particle.js**:
+
+```javascript
+export class Particle {
+  constructor(p, x, y) {
+    this.p = p;
+    this.pos = p.createVector(x, y);
+    this.vel = p5.Vector.random2D();
+    this.vel.mult(p.random(0.5, 2));
+    this.size = p.random(5, 15);
+    this.color = p.color(
+      p.random(100, 255),
+      p.random(100, 255),
+      p.random(100, 255),
+      150
+    );
+  }
+
+  update() {
+    this.pos.add(this.vel);
+    
+    // Wrap around edges.
+    if (this.pos.x < 0) this.pos.x = this.p.width;
+    if (this.pos.x > this.p.width) this.pos.x = 0;
+    if (this.pos.y < 0) this.pos.y = this.p.height;
+    if (this.pos.y > this.p.height) this.pos.y = 0;
+  }
+
+  display() {
+    this.p.noStroke();
+    this.p.fill(this.color);
+    this.p.circle(this.pos.x, this.pos.y, this.size);
+  }
+}
+```
+
+**sketch.js**:
+
+```javascript
+import { Particle } from './particle.js';
+
+export default function sketch(p) {
+  let particles = [];
+
+  p.setup = function() {
+    p.createCanvas(600, 600);
+    
+    // Create initial particles.
+    for (let i = 0; i < 100; i += 1) {
+      particles.push(
+        new Particle(p, p.random(p.width), p.random(p.height))
+      );
+    }
+  };
+
+  p.draw = function() {
+    p.background(0, 50);
+    
+    // Update and display particles.
+    particles.forEach(particle => {
+      particle.update();
+      particle.display();
+    });
+  };
+
+  p.mousePressed = function() {
+    // Add particle on click.
+    particles.push(new Particle(p, p.mouseX, p.mouseY));
+  };
+}
+```
+
+**main.js**:
+
+```javascript
+import p5 from 'p5';
+import sketch from './sketch.js';
+
+new p5(sketch);
+```
+
+## Summary
+
+- Use `type="module"` in HTML `<script>` tags
+- **Instance mode** works naturally with modules (recommended)
+- **Global mode** requires `window.setup`, `window.draw`, etc.
+- Use **Vite** for the best development experience
+- Split code into modules for better organization
+- Install `@types/p5` for TypeScript support
+
+## Next Steps
+
+- [Global vs Instance Mode](/tutorials/global-vs-instance-mode/) - Understand the differences
+- [Using p5.js with React](/tutorials/p5-with-react/) - Framework integration
+- [Loading p5.js in a Container](/tutorials/loading-p5-in-container/) - DOM manipulation

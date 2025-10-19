@@ -1,0 +1,644 @@
+---
+title: Using p5.js with React
+description: Learn how to integrate p5.js sketches into React applications using instance mode, hooks, and proper cleanup.
+category: beyond-web-editor
+categoryIndex: 3
+authors:
+  - hxrshxz  
+  - Dave Pagurek
+---
+
+import Callout from "../../../components/Callout/index.astro";
+
+## Introduction
+
+React and p5.js can work together, but require careful integration due to their different approaches to DOM manipulation. React uses a virtual DOM, while p5.js creates and manages canvas elements directly. This tutorial shows you how to combine them safely using React hooks and instance mode.
+
+## Prerequisites
+
+- Basic React knowledge (components, hooks, props)
+- Understanding of [Global vs Instance Mode](/tutorials/global-vs-instance-mode/)
+- Familiarity with p5.js basics
+
+## Why Instance Mode?
+
+React components can mount and unmount multiple times. Instance mode allows you to:
+- Create multiple p5 sketches in different components
+- Properly clean up sketches when components unmount
+- Pass props and state to your sketches
+
+<Callout type="warning">
+**Never use global mode in React.** Global mode creates global `setup()` and `draw()` functions that conflict with React's component lifecycle and don't support multiple sketches.
+</Callout>
+
+## Basic React + p5.js Component
+
+Here's the recommended pattern using React hooks:
+
+```jsx
+import React, { useEffect, useRef } from 'react';
+import p5 from 'p5';
+
+function SketchComponent() {
+  const sketchRef = useRef();
+
+  useEffect(() => {
+    const sketch = (p) => {
+      p.setup = function() {
+        p.createCanvas(400, 400);
+        p.background(220);
+      };
+
+      p.draw = function() {
+        p.fill(255, 0, 0);
+        p.circle(p.mouseX, p.mouseY, 50);
+      };
+    };
+
+    // Create p5 instance.
+    const p5Instance = new p5(sketch, sketchRef.current);
+
+    // Cleanup when component unmounts.
+    return () => {
+      p5Instance.remove();
+    };
+  }, []); // Empty dependency array = run once on mount
+
+  return <div ref={sketchRef}></div>;
+}
+
+export default SketchComponent;
+```
+
+### Key Points:
+
+1. **`useRef`**: Creates a reference to the DOM container
+2. **`useEffect`**: Runs setup code when component mounts
+3. **Cleanup function**: Calls `p5Instance.remove()` when component unmounts
+4. **Empty dependency array**: Ensures sketch is created only once
+
+## Passing Props to Sketches
+
+To make sketches respond to React props, use `useRef` to share data:
+
+```jsx
+import React, { useEffect, useRef } from 'react';
+import p5 from 'p5';
+
+function ColorfulSketch({ color, size }) {
+  const sketchRef = useRef();
+  const propsRef = useRef({ color, size });
+
+  // Update ref when props change.
+  useEffect(() => {
+    propsRef.current = { color, size };
+  }, [color, size]);
+
+  useEffect(() => {
+    const sketch = (p) => {
+      p.setup = function() {
+        p.createCanvas(400, 400);
+      };
+
+      p.draw = function() {
+        p.background(220);
+        
+        // Access current props via ref.
+        const { color, size } = propsRef.current;
+        
+        p.fill(color);
+        p.circle(p.mouseX, p.mouseY, size);
+      };
+    };
+
+    const p5Instance = new p5(sketch, sketchRef.current);
+
+    return () => {
+      p5Instance.remove();
+    };
+  }, []); // Still empty - don't recreate sketch
+
+  return <div ref={sketchRef}></div>;
+}
+
+export default ColorfulSketch;
+
+// Usage:
+// <ColorfulSketch color="red" size={50} />
+```
+
+<Callout type="info">
+Using `useRef` avoids recreating the entire sketch when props change. The sketch reads the latest values from `propsRef.current` in each `draw()` call.
+</Callout>
+
+## Triggering Sketch Actions from React
+
+Call p5 methods from React event handlers:
+
+```jsx
+import React, { useEffect, useRef, useState } from 'react';
+import p5 from 'p5';
+
+function InteractiveSketch() {
+  const sketchRef = useRef();
+  const p5InstanceRef = useRef();
+  const [isPlaying, setIsPlaying] = useState(true);
+
+  useEffect(() => {
+    const sketch = (p) => {
+      p.setup = function() {
+        p.createCanvas(400, 400);
+        p.background(220);
+      };
+
+      p.draw = function() {
+        p.fill(p.random(255), p.random(255), p.random(255));
+        p.circle(p.random(400), p.random(400), 50);
+      };
+    };
+
+    p5InstanceRef.current = new p5(sketch, sketchRef.current);
+
+    return () => {
+      p5InstanceRef.current.remove();
+    };
+  }, []);
+
+  const toggleAnimation = () => {
+    if (isPlaying === true) {
+      p5InstanceRef.current.noLoop();
+    } else {
+      p5InstanceRef.current.loop();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const clearCanvas = () => {
+    p5InstanceRef.current.background(220);
+  };
+
+  return (
+    <div>
+      <div ref={sketchRef}></div>
+      <button onClick={toggleAnimation}>
+        {isPlaying ? 'Pause' : 'Play'}
+      </button>
+      <button onClick={clearCanvas}>Clear</button>
+    </div>
+  );
+}
+
+export default InteractiveSketch;
+```
+
+## Handling Window Resize
+
+Make your sketch responsive to browser resizing:
+
+```jsx
+import React, { useEffect, useRef } from 'react';
+import p5 from 'p5';
+
+function ResponsiveSketch() {
+  const sketchRef = useRef();
+
+  useEffect(() => {
+    const sketch = (p) => {
+      p.setup = function() {
+        const width = sketchRef.current.offsetWidth;
+        p.createCanvas(width, 400);
+        p.background(220);
+      };
+
+      p.draw = function() {
+        p.circle(p.mouseX, p.mouseY, 50);
+      };
+
+      p.windowResized = function() {
+        const width = sketchRef.current.offsetWidth;
+        p.resizeCanvas(width, 400);
+        p.background(220);
+      };
+    };
+
+    const p5Instance = new p5(sketch, sketchRef.current);
+
+    return () => {
+      p5Instance.remove();
+    };
+  }, []);
+
+  return <div ref={sketchRef} style={{ width: '100%' }}></div>;
+}
+
+export default ResponsiveSketch;
+```
+
+## Multiple Sketches in One App
+
+Each component manages its own sketch instance:
+
+```jsx
+import React from 'react';
+import SketchComponent from './SketchComponent';
+import ColorfulSketch from './ColorfulSketch';
+
+function App() {
+  return (
+    <div>
+      <h1>My p5.js Gallery</h1>
+      
+      <div style={{ display: 'flex', gap: '20px' }}>
+        <SketchComponent />
+        <ColorfulSketch color="blue" size={30} />
+        <ColorfulSketch color="green" size={60} />
+      </div>
+    </div>
+  );
+}
+
+export default App;
+```
+
+## Preloading Assets
+
+Handle `preload()` in instance mode:
+
+```jsx
+import React, { useEffect, useRef } from 'react';
+import p5 from 'p5';
+
+function ImageSketch() {
+  const sketchRef = useRef();
+
+  useEffect(() => {
+    const sketch = (p) => {
+      let img;
+
+      p.preload = function() {
+        // Load image before setup.
+        img = p.loadImage('/path/to/image.jpg');
+      };
+
+      p.setup = function() {
+        p.createCanvas(400, 400);
+      };
+
+      p.draw = function() {
+        p.background(220);
+        p.image(img, 0, 0, 400, 400);
+        p.circle(p.mouseX, p.mouseY, 50);
+      };
+    };
+
+    const p5Instance = new p5(sketch, sketchRef.current);
+
+    return () => {
+      p5Instance.remove();
+    };
+  }, []);
+
+  return <div ref={sketchRef}></div>;
+}
+
+export default ImageSketch;
+```
+
+## TypeScript Support
+
+Add types for better developer experience:
+
+```tsx
+import React, { useEffect, useRef } from 'react';
+import p5 from 'p5';
+
+interface SketchProps {
+  color: string;
+  size: number;
+}
+
+const ColorfulSketch: React.FC<SketchProps> = ({ color, size }) => {
+  const sketchRef = useRef<HTMLDivElement>(null);
+  const propsRef = useRef<SketchProps>({ color, size });
+
+  useEffect(() => {
+    propsRef.current = { color, size };
+  }, [color, size]);
+
+  useEffect(() => {
+    if (!sketchRef.current) return;
+
+    const sketch = (p: p5) => {
+      p.setup = function() {
+        p.createCanvas(400, 400);
+      };
+
+      p.draw = function() {
+        p.background(220);
+        const { color, size } = propsRef.current;
+        p.fill(color);
+        p.circle(p.mouseX, p.mouseY, size);
+      };
+    };
+
+    const p5Instance = new p5(sketch, sketchRef.current);
+
+    return () => {
+      p5Instance.remove();
+    };
+  }, []);
+
+  return <div ref={sketchRef}></div>;
+};
+
+export default ColorfulSketch;
+```
+
+<Callout type="info">
+Install p5 types: `npm install --save-dev @types/p5`
+</Callout>
+
+## Performance Optimization
+
+### Pause When Not Visible
+
+Stop the draw loop when the component isn't visible:
+
+```jsx
+import React, { useEffect, useRef } from 'react';
+import p5 from 'p5';
+
+function OptimizedSketch() {
+  const sketchRef = useRef();
+  const p5InstanceRef = useRef();
+
+  useEffect(() => {
+    const sketch = (p) => {
+      p.setup = function() {
+        p.createCanvas(400, 400);
+      };
+
+      p.draw = function() {
+        p.background(220);
+        p.circle(p.random(400), p.random(400), 50);
+      };
+    };
+
+    p5InstanceRef.current = new p5(sketch, sketchRef.current);
+
+    // Pause when tab is hidden.
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        p5InstanceRef.current.noLoop();
+      } else {
+        p5InstanceRef.current.loop();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      p5InstanceRef.current.remove();
+    };
+  }, []);
+
+  return <div ref={sketchRef}></div>;
+}
+
+export default OptimizedSketch;
+```
+
+### Lazy Loading with React.lazy()
+
+Load heavy sketch components only when needed:
+
+```jsx
+import React, { lazy, Suspense } from 'react';
+
+const HeavySketch = lazy(() => import('./HeavySketch'));
+
+function App() {
+  return (
+    <div>
+      <h1>My App</h1>
+      <Suspense fallback={<div>Loading sketch...</div>}>
+        <HeavySketch />
+      </Suspense>
+    </div>
+  );
+}
+
+export default App;
+```
+
+## Common Pitfalls
+
+### Don't Recreate Sketch on Every Render
+
+❌ **Wrong** - sketch recreates on every state change:
+
+```jsx
+function BadSketch({ color }) {
+  const sketchRef = useRef();
+
+  useEffect(() => {
+    const sketch = (p) => {
+      p.setup = function() {
+        p.createCanvas(400, 400);
+      };
+
+      p.draw = function() {
+        p.fill(color); // Using prop directly
+        p.circle(p.mouseX, p.mouseY, 50);
+      };
+    };
+
+    const p5Instance = new p5(sketch, sketchRef.current);
+    return () => p5Instance.remove();
+  }, [color]); // ❌ Recreates sketch when color changes!
+
+  return <div ref={sketchRef}></div>;
+}
+```
+
+✅ **Correct** - use ref to access latest props:
+
+```jsx
+function GoodSketch({ color }) {
+  const sketchRef = useRef();
+  const propsRef = useRef({ color });
+
+  useEffect(() => {
+    propsRef.current = { color };
+  }, [color]);
+
+  useEffect(() => {
+    const sketch = (p) => {
+      p.setup = function() {
+        p.createCanvas(400, 400);
+      };
+
+      p.draw = function() {
+        p.fill(propsRef.current.color); // ✅ Access via ref
+        p.circle(p.mouseX, p.mouseY, 50);
+      };
+    };
+
+    const p5Instance = new p5(sketch, sketchRef.current);
+    return () => p5Instance.remove();
+  }, []); // ✅ Empty array - create once
+
+  return <div ref={sketchRef}></div>;
+}
+```
+
+### Always Clean Up
+
+❌ **Wrong** - memory leak:
+
+```jsx
+useEffect(() => {
+  const sketch = (p) => { /* ... */ };
+  new p5(sketch, sketchRef.current);
+  // ❌ No cleanup!
+}, []);
+```
+
+✅ **Correct** - cleanup on unmount:
+
+```jsx
+useEffect(() => {
+  const sketch = (p) => { /* ... */ };
+  const p5Instance = new p5(sketch, sketchRef.current);
+  
+  return () => {
+    p5Instance.remove(); // ✅ Cleanup
+  };
+}, []);
+```
+
+### Check Ref Before Using
+
+❌ **Wrong** - potential null reference:
+
+```jsx
+const toggleAnimation = () => {
+  p5InstanceRef.current.noLoop(); // ❌ May be null
+};
+```
+
+✅ **Correct** - null check:
+
+```jsx
+const toggleAnimation = () => {
+  if (p5InstanceRef.current) { // ✅ Check first
+    p5InstanceRef.current.noLoop();
+  }
+};
+```
+
+## Complete Example: Interactive Color Picker
+
+```jsx
+import React, { useEffect, useRef, useState } from 'react';
+import p5 from 'p5';
+
+function ColorPickerSketch() {
+  const sketchRef = useRef();
+  const p5InstanceRef = useRef();
+  const colorRef = useRef({ r: 255, g: 0, b: 0 });
+  
+  const [red, setRed] = useState(255);
+  const [green, setGreen] = useState(0);
+  const [blue, setBlue] = useState(0);
+
+  // Update color ref when state changes.
+  useEffect(() => {
+    colorRef.current = { r: red, g: green, b: blue };
+  }, [red, green, blue]);
+
+  // Create sketch once.
+  useEffect(() => {
+    const sketch = (p) => {
+      p.setup = function() {
+        p.createCanvas(400, 400);
+      };
+
+      p.draw = function() {
+        const { r, g, b } = colorRef.current;
+        p.background(220);
+        p.fill(r, g, b);
+        p.circle(p.mouseX, p.mouseY, 100);
+      };
+    };
+
+    p5InstanceRef.current = new p5(sketch, sketchRef.current);
+
+    return () => {
+      p5InstanceRef.current.remove();
+    };
+  }, []);
+
+  return (
+    <div style={{ fontFamily: 'Arial, sans-serif' }}>
+      <div ref={sketchRef}></div>
+      
+      <div style={{ marginTop: '20px' }}>
+        <label>
+          Red: {red}
+          <input
+            type="range"
+            min="0"
+            max="255"
+            value={red}
+            onChange={(e) => setRed(Number(e.target.value))}
+            style={{ width: '100%' }}
+          />
+        </label>
+        
+        <label>
+          Green: {green}
+          <input
+            type="range"
+            min="0"
+            max="255"
+            value={green}
+            onChange={(e) => setGreen(Number(e.target.value))}
+            style={{ width: '100%' }}
+          />
+        </label>
+        
+        <label>
+          Blue: {blue}
+          <input
+            type="range"
+            min="0"
+            max="255"
+            value={blue}
+            onChange={(e) => setBlue(Number(e.target.value))}
+            style={{ width: '100%' }}
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+export default ColorPickerSketch;
+```
+
+## Summary
+
+- **Always use instance mode** in React (never global mode)
+- **Create sketches in `useEffect`** with empty dependency array
+- **Always clean up** with `return () => p5Instance.remove()`
+- **Use `useRef`** to pass props to sketches without recreating them
+- **Store p5 instance in ref** if you need to call methods from React
+- **Check refs for null** before accessing methods
+
+## Next Steps
+
+- [Loading p5.js in a Container](/tutorials/loading-p5-in-container/) - Direct DOM integration
+- [Using ESM Modules with p5.js](/tutorials/p5-with-esm/) - Modern JavaScript modules
+- [Global vs Instance Mode](/tutorials/global-vs-instance-mode/) - Deep dive into mode differences

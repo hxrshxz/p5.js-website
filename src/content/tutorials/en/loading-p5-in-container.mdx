@@ -1,0 +1,464 @@
+---
+title: Loading p5.js in a Container
+description: Learn how to embed p5.js sketches directly into specific HTML containers using createCanvas().parent() and instance mode.
+category: beyond-web-editor
+categoryIndex: 2
+authors:
+  - hxrshxz  
+  - Dave Pagurek
+---
+
+import Callout from "../../../components/Callout/index.astro";
+
+## Introduction
+
+While iframes provide isolation for p5.js sketches, sometimes you want to embed a canvas directly into your webpage's DOM. This tutorial shows you how to load p5.js sketches into specific HTML containers, giving you more control over layout and styling.
+
+## Prerequisites
+
+- Understanding of [Global vs Instance Mode](/tutorials/global-vs-instance-mode/)
+- Basic HTML and CSS knowledge
+- Familiarity with p5.js basics
+
+## Method 1: Global Mode with parent()
+
+If you're using global mode and want to place the canvas in a specific container, use the `parent()` method:
+
+### HTML Structure
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>p5.js in Container</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.js"></script>
+  <style>
+    #sketch-container {
+      width: 400px;
+      height: 400px;
+      border: 2px solid #333;
+      margin: 20px auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>My p5.js Sketch</h1>
+  <div id="sketch-container"></div>
+  <script src="sketch.js"></script>
+</body>
+</html>
+```
+
+### JavaScript (sketch.js)
+
+```javascript
+function setup() {
+  let canvas = createCanvas(400, 400);
+  // Place canvas in the container.
+  canvas.parent('sketch-container');
+  background(220);
+}
+
+function draw() {
+  circle(mouseX, mouseY, 50);
+}
+```
+
+The `canvas.parent()` method moves the canvas element into the specified container.
+
+<Callout type="warning">
+With global mode, you can only have **one sketch per page**. For multiple sketches, use instance mode (Method 2).
+</Callout>
+
+## Method 2: Instance Mode (Recommended)
+
+Instance mode is more flexible and allows multiple sketches on the same page:
+
+### HTML Structure
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Multiple p5.js Sketches</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.js"></script>
+  <style>
+    .sketch-container {
+      width: 400px;
+      height: 400px;
+      border: 2px solid #333;
+      margin: 20px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <h1>Two Sketches on One Page</h1>
+  <div id="sketch1"></div>
+  <div id="sketch2"></div>
+  <script src="sketches.js"></script>
+</body>
+</html>
+```
+
+### JavaScript (sketches.js)
+
+```javascript
+// First sketch - bouncing ball.
+const sketch1 = (p) => {
+  let x = 200;
+  let y = 200;
+  let xSpeed = 3;
+  let ySpeed = 2;
+
+  p.setup = function() {
+    p.createCanvas(400, 400);
+    p.background(220);
+  };
+
+  p.draw = function() {
+    p.background(220);
+    
+    // Draw ball.
+    p.fill(255, 0, 0);
+    p.circle(x, y, 50);
+    
+    // Move ball.
+    x += xSpeed;
+    y += ySpeed;
+    
+    // Bounce off edges.
+    if (x < 25 || x > 375) xSpeed *= -1;
+    if (y < 25 || y > 375) ySpeed *= -1;
+  };
+};
+
+// Second sketch - interactive drawing.
+const sketch2 = (p) => {
+  p.setup = function() {
+    p.createCanvas(400, 400);
+    p.background(220);
+  };
+
+  p.draw = function() {
+    if (p.mouseIsPressed === true) {
+      p.fill(0, 0, 255);
+      p.circle(p.mouseX, p.mouseY, 20);
+    }
+  };
+
+  p.mousePressed = function() {
+    return false; // Prevent default behavior
+  };
+};
+
+// Create both sketches.
+new p5(sketch1, 'sketch1');
+new p5(sketch2, 'sketch2');
+```
+
+Each sketch runs independently with its own canvas, state, and event handlers.
+
+## Responsive Sizing
+
+Make your canvas responsive to the container size:
+
+```javascript
+const sketch = (p) => {
+  p.setup = function() {
+    // Get container element.
+    const container = document.getElementById('sketch-container');
+    
+    // Create canvas to match container size.
+    const canvas = p.createCanvas(
+      container.offsetWidth,
+      container.offsetHeight
+    );
+  };
+
+  p.draw = function() {
+    p.background(220);
+    p.circle(p.mouseX, p.mouseY, 50);
+  };
+
+  // Resize canvas when window resizes.
+  p.windowResized = function() {
+    const container = document.getElementById('sketch-container');
+    p.resizeCanvas(container.offsetWidth, container.offsetHeight);
+  };
+};
+
+new p5(sketch, 'sketch-container');
+```
+
+## Removing Sketches
+
+When you no longer need a sketch (e.g., when navigating away), remove it to free up resources:
+
+```javascript
+// Store sketch reference.
+const mySketch = new p5(sketch, 'sketch-container');
+
+// Later, when you want to remove it:
+mySketch.remove();
+```
+
+This is especially important when:
+- Using sketches in single-page applications (SPAs)
+- Dynamically loading/unloading sketches
+- Working with React, Vue, or Angular components
+
+## Styling Containers
+
+### Centering a Sketch
+
+```css
+#sketch-container {
+  width: 400px;
+  height: 400px;
+  margin: 0 auto; /* Center horizontally */
+  display: block;
+}
+```
+
+### Side-by-Side Sketches
+
+```css
+.sketch-container {
+  width: 400px;
+  height: 400px;
+  display: inline-block;
+  margin: 10px;
+  vertical-align: top;
+}
+```
+
+### Responsive Container
+
+```css
+#sketch-container {
+  width: 100%;
+  max-width: 600px;
+  aspect-ratio: 1 / 1; /* Square */
+  margin: 20px auto;
+}
+```
+
+## Performance Considerations
+
+### Lazy Loading Sketches
+
+For pages with many sketches, load them only when they're visible:
+
+```javascript
+const sketch = (p) => {
+  p.setup = function() {
+    p.createCanvas(400, 400);
+    p.background(220);
+  };
+
+  p.draw = function() {
+    p.circle(p.mouseX, p.mouseY, 50);
+  };
+};
+
+// Use Intersection Observer to load sketch when visible.
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      // Load sketch when container is visible.
+      new p5(sketch, 'sketch-container');
+      observer.unobserve(entry.target);
+    }
+  });
+});
+
+observer.observe(document.getElementById('sketch-container'));
+```
+
+<Callout type="info">
+For better performance with many sketches, consider using [iframes](/tutorials/embedding-p5-with-iframe/) instead, which can be loaded/unloaded more efficiently.
+</Callout>
+
+### Pausing Sketches
+
+Pause sketches that aren't visible to save CPU:
+
+```javascript
+const sketch = (p) => {
+  p.setup = function() {
+    p.createCanvas(400, 400);
+  };
+
+  p.draw = function() {
+    p.background(220);
+    p.circle(p.mouseX, p.mouseY, 50);
+  };
+};
+
+const mySketch = new p5(sketch, 'sketch-container');
+
+// Pause when not visible.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    mySketch.noLoop();  // Stop draw loop
+  } else {
+    mySketch.loop();    // Resume draw loop
+  }
+});
+```
+
+## Common Issues and Solutions
+
+### Canvas Appears Twice
+
+**Problem:** You see two canvases—one inside and one outside the container.
+
+**Solution:** Make sure you're using instance mode correctly and passing the container ID as the second argument:
+
+```javascript
+new p5(sketch, 'sketch-container'); // ✅ Correct
+```
+
+### Container Size Issues
+
+**Problem:** Canvas doesn't fit the container properly.
+
+**Solution:** Set explicit dimensions or use responsive sizing:
+
+```javascript
+p.setup = function() {
+  const container = document.getElementById('sketch-container');
+  p.createCanvas(container.offsetWidth, container.offsetHeight);
+};
+```
+
+### Multiple Sketches Conflict
+
+**Problem:** Two sketches interfere with each other.
+
+**Solution:** Use instance mode, not global mode:
+
+```javascript
+// ❌ Wrong - global mode can't handle multiple sketches
+function setup() { ... }
+
+// ✅ Correct - instance mode isolates each sketch
+const sketch = (p) => {
+  p.setup = function() { ... }
+};
+```
+
+## Complete Example
+
+Here's a complete example showing two interactive sketches side by side:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>p5.js Container Demo</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .sketches {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+    
+    .sketch-container {
+      border: 2px solid #333;
+      border-radius: 8px;
+    }
+    
+    h2 {
+      text-align: center;
+      margin-top: 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Interactive p5.js Sketches</h1>
+  
+  <div class="sketches">
+    <div>
+      <h2>Click to Draw</h2>
+      <div id="draw-sketch" class="sketch-container"></div>
+    </div>
+    
+    <div>
+      <h2>Follow Mouse</h2>
+      <div id="follow-sketch" class="sketch-container"></div>
+    </div>
+  </div>
+
+  <script>
+    // Drawing sketch.
+    const drawSketch = (p) => {
+      p.setup = function() {
+        p.createCanvas(400, 400);
+        p.background(255);
+      };
+
+      p.draw = function() {
+        if (p.mouseIsPressed === true) {
+          p.fill(p.random(255), p.random(255), p.random(255));
+          p.circle(p.mouseX, p.mouseY, 20);
+        }
+      };
+    };
+
+    // Follow sketch.
+    const followSketch = (p) => {
+      let circles = [];
+
+      p.setup = function() {
+        p.createCanvas(400, 400);
+      };
+
+      p.draw = function() {
+        p.background(220);
+        
+        // Add new circle.
+        circles.push({ x: p.mouseX, y: p.mouseY });
+        if (circles.length > 20) circles.shift();
+        
+        // Draw trail.
+        circles.forEach((c, i) => {
+          p.fill(100, 100, 255, 255 * (i / circles.length));
+          p.circle(c.x, c.y, 30);
+        });
+      };
+    };
+
+    // Initialize both sketches.
+    new p5(drawSketch, 'draw-sketch');
+    new p5(followSketch, 'follow-sketch');
+  </script>
+</body>
+</html>
+```
+
+## Summary
+
+- Use `canvas.parent('containerID')` for **global mode** (one sketch only)
+- Use **instance mode** with `new p5(sketch, 'containerID')` for multiple sketches
+- Always call `remove()` when destroying sketches to prevent memory leaks
+- Consider lazy loading and pausing for better performance
+- For maximum isolation and performance, use [iframes](/tutorials/embedding-p5-with-iframe/) instead
+
+## Next Steps
+
+- [Using p5.js with React](/tutorials/p5-with-react/) - Integrate p5.js with React components
+- [Embedding p5.js with an iframe](/tutorials/embedding-p5-with-iframe/) - Alternative approach with better isolation
+- [Using ESM Modules with p5.js](/tutorials/p5-with-esm/) - Modern JavaScript module syntax

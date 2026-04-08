@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "preact/hooks";
-import { useLiveRegion } from '../hooks/useLiveRegion';
+import { useLiveRegion } from "../hooks/useLiveRegion";
 import CodeMirror, { EditorView } from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { cdnLibraryUrl, cdnSoundUrl } from "@/src/globals/globals";
@@ -38,7 +38,10 @@ export const CodeEmbed = (props) => {
   );
 
   let { previewWidth, previewHeight } = props;
-  const canvasMatch = /createCanvas\(\s*(\d+),\s*(\d+)\s*(?:,\s*(?:P2D|WEBGL)\s*)?\)/m.exec(initialCode);
+  const canvasMatch =
+    /createCanvas\(\s*(\d+),\s*(\d+)\s*(?:,\s*(?:P2D|WEBGL)\s*)?\)/m.exec(
+      initialCode,
+    );
   if (canvasMatch) {
     previewWidth = previewWidth || parseFloat(canvasMatch[1]);
     previewHeight = previewHeight || parseFloat(canvasMatch[2]);
@@ -87,15 +90,15 @@ export const CodeEmbed = (props) => {
     }
   }, []);
 
-  if (!rendered) return <div className="code-placeholder" />;
+  if (!rendered) return <div class="code-placeholder" />;
 
   return (
     <div
-      className={`my-md flex w-full flex-col gap-[20px] overflow-hidden ${props.allowSideBySide ? "lg:flex-row" : ""} ${props.fullWidth ? "full-width" : ""}`}
+      class={`my-md flex w-full flex-col gap-[20px] overflow-hidden ${props.allowSideBySide ? "lg:flex-row" : ""} ${props.fullWidth ? "full-width" : ""}`}
     >
       {props.previewable ? (
         <div
-          className={`ml-0 flex w-fit gap-[20px] ${largeSketch ? "flex-col" : (props.allowSideBySide ? "" : "flex-col lg:flex-row")}`}
+          class={`ml-0 flex w-fit gap-[20px] ${largeSketch ? "flex-col" : props.allowSideBySide ? "" : "flex-col lg:flex-row"}`}
         >
           <div>
             <CodeFrame
@@ -105,19 +108,25 @@ export const CodeEmbed = (props) => {
               base={props.base}
               frameRef={codeFrameRef}
               lazyLoad={props.lazyLoad}
-	      scripts={props.includeSound ? [cdnLibraryUrl, cdnSoundUrl] :[cdnLibraryUrl]}
+              scripts={
+                props.includeSound
+                  ? [cdnLibraryUrl, cdnSoundUrl]
+                  : [cdnLibraryUrl]
+              }
             />
           </div>
-          <div className={`flex gap-2.5 ${largeSketch ? "flex-row" : "md:flex-row lg:flex-col"}`}>
+          <div
+            class={`flex gap-2.5 ${largeSketch ? "flex-row" : "md:flex-row lg:flex-col"}`}
+          >
             <CircleButton
-              className="bg-bg-gray-40"
+              class="bg-bg-gray-40"
               onClick={updateOrReRun}
               ariaLabel="Run sketch"
             >
               <Icon kind="play" />
             </CircleButton>
             <CircleButton
-              className="bg-bg-gray-40"
+              class="bg-bg-gray-40"
               onClick={() => {
                 setPreviewCodeString("");
                 announce("Sketch stopped");
@@ -129,7 +138,7 @@ export const CodeEmbed = (props) => {
           </div>
         </div>
       ) : null}
-      <div className="code-editor-container relative w-full">
+      <div class="code-editor-container relative w-full">
         <CodeMirror
           value={codeString}
           theme="light"
@@ -155,7 +164,7 @@ export const CodeEmbed = (props) => {
             (editorView.contentDOM.ariaLabel = "Code Editor")
           }
         />
-        <div className="absolute right-0 top-0 flex flex-col gap-xs p-xs md:flex-row">
+        <div class="absolute right-0 top-0 flex flex-col gap-xs p-xs md:flex-row">
           <CopyCodeButton textToCopy={codeString || initialCode} />
           <CircleButton
             onClick={() => {
@@ -164,7 +173,7 @@ export const CodeEmbed = (props) => {
               announce("Code reset to initial value.");
             }}
             ariaLabel="Reset code to initial value"
-            className="bg-white text-black"
+            class="bg-white text-black"
           >
             <Icon kind="refresh" />
           </CircleButton>

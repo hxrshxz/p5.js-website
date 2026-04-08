@@ -7,6 +7,7 @@ interface Props {
   config: CollectionEntry<"homepage">;
 }
 const { config } = Astro.props;
+const heroImages = config.data.heroImages;
 
 ---
 
@@ -22,7 +23,7 @@ const { config } = Astro.props;
       />
     </div>
     {
-      config.data.heroImages.map((im, i) => (
+      heroImages.map((im: typeof heroImages[number], i: number) => (
         <p
           class={`hero-caption text-body-caption pb-sm mt-0 ${i > 0 ? "hidden" : ""}`}
         >
@@ -37,7 +38,7 @@ const { config } = Astro.props;
   </div>
 
   {
-    config.data.heroImages.map((im, i) => (
+    heroImages.map((im: typeof heroImages[number], i: number) => (
       im.linkTarget ?
       <a href={im.linkTarget} class={`max-lg:flex-1 max-lg:min-h-0 hero-image-container ${i > 0 ? "hidden" : ""}`}>
       <Image

@@ -18,12 +18,12 @@ interface Props {
   class?: string;
 }
 
-const { title, items, class: className } = Astro.props;
+const { title, items, class: sectionClass } = Astro.props;
 ---
 
 <div>
   <hr />
-  <section class={className}>
+  <section class={sectionClass}>
     <h2>{title}</h2>
     <ul class="content-grid-simple">
       {items.map((i) => {

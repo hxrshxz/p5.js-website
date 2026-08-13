@@ -174,7 +174,11 @@ export const Dropdown = ({
   );
 
   return (
-    <div class={styles.container} ref={dropdownRef} onKeyDown={handleKeyDown}>
+    <div
+      class={styles.container}
+      ref={dropdownRef}
+      onKeyDown={handleKeyDown}
+    >
       {isOpen ? renderExpandedDropdown() : renderCollapsedDropdown()}
     </div>
   );

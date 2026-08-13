@@ -28,7 +28,7 @@ const SearchResults = ({
   const [isInputEdited, setInputEdited] = useState(false);
   const prevIsInputEdited = useRef(isInputEdited);
 
-  // Reset filter and input state when search term changes
+   // Reset filter and input state when search term changes
   useEffect(() => {
     setCurrentFilter("");
     setInputEdited(false);
@@ -114,7 +114,7 @@ const SearchResults = ({
     if (inputRef.current) {
       inputRef.current.value = "";
     }
-    onSearchChange("");
+    onSearchChange("")
   };
   const submitInput = () => {
     if (inputRef.current) {

@@ -29,7 +29,11 @@ export const CircleButton = ({
     );
   }
   return (
-    <button onClick={onClick} aria-label={ariaLabel} class={sharedClass}>
+    <button
+      onClick={onClick}
+      aria-label={ariaLabel}
+      class={sharedClass}
+    >
       {children}
     </button>
   );

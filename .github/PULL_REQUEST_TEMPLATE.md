@@ -7,16 +7,12 @@
 <!-- Summarize what this PR changes and why. -->
 
 ### Screenshots
-<!-- If this changes anything visual, add before/after screenshots. -->
-
-### Branch
-<!-- Which branch were these changes made against? -->
-
-- [ ] main
-- [ ] 2.0
+<!-- If this changes anything visual, add before/after screenshots (or a video for interaction changes). -->
 
 ### PR Checklist
 
 - [ ] `npm run lint` passes
 - [ ] `npm run test` passes
+- [ ] Tested changes with `npm run dev`
 - [ ] Tested on both desktop and mobile (for UI changes)
+- [ ] Added test(s) for this change, or explained why none are needed
